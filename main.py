@@ -27,12 +27,15 @@ def login():
     email = request.form.get("user-email")
     password = request.form.get("user-password")
     hashed_password = hashlib.sha256(password.encode()).hexdigest()
+    if name == '':
+        return "invalid username"
+    elif email == '':
+        return "invalid email"
+    else :
+        # create a secret number
+        secret_number = random.randint(1, 30)
 
-
-    # create a secret number
-    secret_number = random.randint(1, 30)
-
-    # see if user already exists
+        # see if user already exists
     user = db.query(User).filter_by(email=email).first()
 
     if not user:
@@ -86,6 +89,72 @@ def result():
         message = "Your guess is not correct... try something bigger."
 
     return render_template("result.html", message=message)
+
+
+@app.route("/profile", methods=["GET"])
+def profile():
+    session_token = request.cookies.get("session_token")
+
+    user = db.query(User).filter_by(session_token=session_token).first()
+
+    if user:
+        return render_template("profile.html", user=user)
+    else:
+        return render_template(("index.html"))
+
+
+@app.route("/profile/edit", methods=["GET", "POST"])
+def profile_edit():
+    session_token = request.cookies.get("session_token")
+    user = db.query(User).filter_by(session_token=session_token).first()
+
+    if request.method == "POST":
+        name = request.form.get("profile-name")
+        email = request.form.get("profile-email")
+
+        user.name = name
+        user.email = email
+
+        db.add(user)
+        db.commit()
+
+        return redirect(url_for("profile"))
+    else:
+        if user :
+            return render_template("profile_edit.html", user=user)
+        else :
+            return render_template("index.html")
+
+
+@app.route("/profile/delete", methods=["GET", "POST"])
+def profile_delete():
+    session_token = request.cookies.get("session_token")
+    user = db.query(User).filter_by(session_token=session_token).first()
+
+    if request.method == "POST" :
+        db.delete(user)
+        db.commit()
+
+        return redirect(url_for("index"))
+    else :
+        if user:
+            return render_template("profile_delete.html", user=user)
+        else:
+            return redirect(url_for("index"))
+
+
+@app.route("/users", methods=["GET"])
+def all_users():
+    users = db.query(User).all()
+
+    return render_template("users.html", users=users)
+
+
+@app.route("/user/<user_id>", methods=["GET"])
+def user_details(user_id):
+    user = db.query(User).get(int(user_id))
+
+    return render_template("user_details.html", user=user)
 
 
 if __name__ == '__main__':
